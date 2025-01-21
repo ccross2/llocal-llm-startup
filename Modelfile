@@ -1,0 +1,22 @@
+FROM qwen:7b
+
+# Minimal context size for basic operations
+PARAMETER num_ctx 256
+
+# Conservative token generation limit
+PARAMETER num_predict 100
+
+# Optimized for quick, focused responses
+PARAMETER temperature 0.6
+PARAMETER top_k 20
+PARAMETER top_p 0.8
+PARAMETER repeat_penalty 1.1
+PARAMETER repeat_last_n 64
+
+# Disable Mirostat
+PARAMETER mirostat 0
+PARAMETER mirostat_eta 0.1
+PARAMETER mirostat_tau 5.0
+
+# Add seed for consistent responses
+PARAMETER seed 42
