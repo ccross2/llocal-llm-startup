@@ -26,41 +26,50 @@ def timeout(seconds):
         return wrapper
     return decorator
 
-def run_with_timeout(prompt: str, model_name: str, timeout_seconds: int = 30) -> Optional[str]:
+def run_with_timeout(prompt: str, model_name: str, timeout_seconds: int = 45):
     """Run LLM inference with a timeout"""
     try:
-        # Add a small delay between runs
-        time.sleep(2)
         @timeout(timeout_seconds)
         def generate():
-            response = ollama.generate(model=model_name, 
-                                     prompt=prompt,
-                                     options={
-                                         "temperature": 0.7,
-                                         "num_ctx": 2048,  # Updated for better context
-                                         "repeat_penalty": 1.1,
-                                         "num_predict": 256,  # Increased for better responses
-                                         "top_k": 40,
-                                         "top_p": 0.9
-                                     })
-            return response['response']
+            time.sleep(1)  # Reduced delay
+            full_response = ""
+            start_time = time.time()
+            
+            # Split prompt into chunks for better memory management
+            chunk_size = 64  # Align with model's context window
+            chunks = [prompt[i:i+chunk_size] for i in range(0, len(prompt), chunk_size)]
+            
+            for prompt_chunk in chunks:
+                # Process each chunk with streaming
+                for response_chunk in ollama.generate(model=model_name,
+                                                    prompt=prompt_chunk,
+                                                    stream=True):
+                    if response_chunk and 'response' in response_chunk:
+                        full_response += response_chunk['response']
+                        # Print progress indicator
+                        print("▪", end="", flush=True)
+                time.sleep(0.1)  # Brief pause between chunks
+            
+            print("\n", end="")  # New line after progress dots
+            return full_response
             
         return generate()
     except TimeoutException:
-        print(f"⚠️ Inference timed out after {timeout_seconds} seconds")
+        print(f"\n⚠️ Inference timed out after {timeout_seconds} seconds")
         return None
     except Exception as e:
-        print(f"⚠️ Error during inference: {str(e)}")
-        if "loading model" in str(e).lower():
-            print("Waiting for model to load...")
-            time.sleep(5)
-            try:
-                return generate()
-            except Exception as retry_e:
-                print(f"⚠️ Retry failed: {str(retry_e)}")
+        print(f"\n⚠️ Error during inference: {str(e)}")
         return None
-    finally:
-        gc.collect()
+
+def warm_up_model(model_name: str):
+    """Perform warm-up runs to stabilize performance"""
+    print("\n🔄 Performing warm-up runs...")
+    warm_up_prompts = ["Hi", "Hello", "Test"]
+    for prompt in warm_up_prompts:
+        print(f"Warming up: {prompt}")
+        run_with_timeout(prompt, model_name, timeout_seconds=20)
+        time.sleep(1)
+    print("✓ Warm-up complete\n")
 
 def benchmark_model(model_name: str, num_runs=2):
     print(f"\n🔄 Benchmarking {model_name}...")
@@ -156,12 +165,13 @@ if __name__ == "__main__":
     # Get total system memory
     total_memory = psutil.virtual_memory().total / (1024**3)  # Convert to GB
     
-    # Select appropriate model based on system memory
-    if total_memory >= 32:
-        model_name = "deepseek-r1:14b"
-    elif total_memory >= 16:
-        model_name = "deepseek-r1:8b"
-    else:
-        model_name = "deepseek-coder:6.7b"
+    # Use custom model with optimized parameters
+    model_name = "deepseek-r1:8b-custom"
     
+    print(f"\n🔄 Benchmarking {model_name}...")
+    
+    # Perform warm-up runs first
+    warm_up_model(model_name)
+    
+    # Run the actual benchmarks
     benchmark_model(model_name)

@@ -16,12 +16,12 @@ optimize_cpu() {
     echo "⚡ Optimizing CPU Performance..."
     
     # Set CPU governor to performance mode
-    for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-        echo "performance" > "$cpu"
-    done
-    
-    # Disable CPU throttling
-    echo "1" > /sys/devices/system/cpu/intel_pstate/no_turbo
+        for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            echo "performance" > "$cpu"
+        done
+        
+        # Disable CPU throttling
+        echo "1" > /sys/devices/system/cpu/intel_pstate/no_turbo
     
     # Set process niceness for Ollama
     ollama_pid=$(pgrep ollama)
@@ -109,6 +109,40 @@ setup_monitoring() {
     fi
 }
 
+# Function to optimize system settings for running the LLM
+optimize_llm_settings() {
+    echo "Setting up system optimizations..."
+
+    # Set conservative environment variables for Ollama
+    export OLLAMA_HOST_THREADS=4
+    export OLLAMA_BATCH_SIZE=4
+    export OLLAMA_GPU_LAYERS=0
+
+    # Aggressive memory management
+    sudo sysctl -w vm.swappiness=5
+    sudo sysctl -w vm.vfs_cache_pressure=50
+    sudo sysctl -w vm.dirty_ratio=5
+    sudo sysctl -w vm.dirty_background_ratio=2
+    sudo sysctl -w vm.min_free_kbytes=1048576  # 1GB minimum free
+
+    # Clear system caches
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+
+    # Set CPU governor to powersave for thermal management
+    if command -v cpupower &> /dev/null; then
+        sudo cpupower frequency-set -g powersave
+    fi
+
+    # Optimize process priority
+    pid=$(pgrep ollama)
+    if [ ! -z "$pid" ]; then
+        sudo renice -n 0 -p $pid  # Normal priority to avoid system strain
+        sudo ionice -c 2 -n 4 -p $pid  # Best-effort, lower priority
+    fi
+
+    echo "Memory-focused optimization complete."
+}
+
 # Main execution
 echo "Starting system optimization..."
 check_root
@@ -120,6 +154,7 @@ optimize_io
 create_ramdisk
 optimize_network
 setup_monitoring
+optimize_llm_settings
 
 echo "✅ System optimization complete!"
 echo "NOTE: These settings will revert after system reboot."

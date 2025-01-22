@@ -1,6 +1,6 @@
 FROM deepseek-r1:8b
 
-# Optimized laptop configuration
+# Optimized for laptop performance
 PARAMETER num_ctx 1024
 PARAMETER num_predict 128
 PARAMETER temperature 0.5
