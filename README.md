@@ -134,26 +134,28 @@ Performance testing suite:
 ### Model Selection
 Available models with hardware requirements:
 
-| Model | RAM Required | VRAM Required | Best For |
-|-------|--------------|---------------|-----------|
-| DeepSeek-7B | 8GB | 6GB | Laptops, Limited RAM |
-| DeepSeek-R1-8B | 12GB | 8GB | Balanced Usage |
-| DeepSeek-14B | 16GB | 8GB | Performance |
-| DeepSeek-R1-14B | 16GB | 10GB | High Performance |
+| Model | RAM Required | Best For | Command |
+|-------|-------------|-----------|----------|
+| DeepSeek Coder 6.7B | 6-8GB | Code completion, lightweight usage | `ollama pull deepseek-coder:6.7b` |
+| DeepSeek LLM 7B | 8GB | General purpose, efficient | `ollama pull deepseek-llm:7b` |
+| DeepSeek R1 8B | 12GB | Balanced performance | `ollama pull deepseek-r1:8b` |
+| DeepSeek R1 14B | 16GB | Enhanced capabilities | `ollama pull deepseek-r1:14b` |
+| DeepSeek Coder V2 7B | 8GB | Enhanced code completion | `ollama pull deepseek-coder-v2:7b` |
 
 ### Modelfile Configuration
-```
-FROM deepseek-llm:7b-q4_0  # Update based on selection
+```bash
+# Dynamic model selection based on system memory
+FROM {{ if gt .Memory 32 }}deepseek-r1:14b{{ else if gt .Memory 16 }}deepseek-r1:8b{{ else }}deepseek-coder:6.7b{{ end }}
 
 # System-specific parameters
-PARAMETER num_ctx {{ if gt .Memory 32 }}2048{{ else }}1024{{ end }}
-PARAMETER num_predict {{ if gt .Memory 32 }}200{{ else }}150{{ end }}
+PARAMETER num_ctx {{ if gt .Memory 32 }}4096{{ else if gt .Memory 16 }}2048{{ else }}1024{{ end }}
+PARAMETER num_predict {{ if gt .Memory 32 }}512{{ else if gt .Memory 16 }}256{{ else }}150{{ end }}
 
 # Quality parameters
 PARAMETER temperature 0.7
 PARAMETER top_k 40
 PARAMETER top_p 0.9
-PARAMETER repeat_penalty 1.2
+PARAMETER repeat_penalty 1.1
 ```
 
 ## Usage 🎯

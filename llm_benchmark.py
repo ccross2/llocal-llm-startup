@@ -5,6 +5,7 @@ import signal
 from typing import Optional
 from datetime import datetime
 import ollama
+import psutil
 
 class TimeoutException(Exception):
     pass
@@ -36,9 +37,9 @@ def run_with_timeout(prompt: str, model_name: str, timeout_seconds: int = 30) ->
                                      prompt=prompt,
                                      options={
                                          "temperature": 0.7,
-                                         "num_ctx": 1024,
-                                         "repeat_penalty": 1.2,
-                                         "num_predict": 150,
+                                         "num_ctx": 2048,  # Updated for better context
+                                         "repeat_penalty": 1.1,
+                                         "num_predict": 256,  # Increased for better responses
                                          "top_k": 40,
                                          "top_p": 0.9
                                      })
@@ -152,4 +153,15 @@ def benchmark_model(model_name: str, num_runs=2):
     print(f"\n💾 Results saved to {results_file}")
 
 if __name__ == "__main__":
-    benchmark_model("qwen-7b-cpu")
+    # Get total system memory
+    total_memory = psutil.virtual_memory().total / (1024**3)  # Convert to GB
+    
+    # Select appropriate model based on system memory
+    if total_memory >= 32:
+        model_name = "deepseek-r1:14b"
+    elif total_memory >= 16:
+        model_name = "deepseek-r1:8b"
+    else:
+        model_name = "deepseek-coder:6.7b"
+    
+    benchmark_model(model_name)

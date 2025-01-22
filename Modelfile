@@ -1,13 +1,13 @@
-FROM qwen:7b
+FROM deepseek-llm:7b-chat
 
-# Minimal context size for basic operations
-PARAMETER num_ctx 256
+# Dynamic context size based on system memory
+PARAMETER num_ctx {{ if gt .Memory 32 }}2048{{ else }}1024{{ end }}
 
-# Conservative token generation limit
-PARAMETER num_predict 100
+# Adaptive prediction length based on resources
+PARAMETER num_predict {{ if gt .Memory 32 }}200{{ else }}150{{ end }}
 
-# Optimized for quick, focused responses
-PARAMETER temperature 0.6
+# Balanced creativity/consistency setting
+PARAMETER temperature 0.7
 PARAMETER top_k 20
 PARAMETER top_p 0.8
 PARAMETER repeat_penalty 1.1
